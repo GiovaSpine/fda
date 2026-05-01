@@ -10,7 +10,7 @@ def roots_cleaning(roots, tol=1e-3, digits=6):
     roots = np.asarray(roots, dtype=complex)
     groups = []
 
-    # raggruppamento
+    # Raggruppamento
     for r in roots:
         inserted = False
 
@@ -39,11 +39,12 @@ def roots_cleaning(roots, tol=1e-3, digits=6):
 
         val = complex(re, im)
 
-        # mantiene molteplicità
+        # Mantiene molteplicità
         cleaned.extend([val] * len(g))
 
     return np.array(cleaned, dtype=complex)
 
+# ---------------------------------------------------------
 
 def punti_multipli(G):
     s = sp.Symbol('s')
@@ -100,6 +101,7 @@ def punti_multipli(G):
     
     return breaks
 
+# ---------------------------------------------------------
 
 def angolo_di_partenza_diretto(p, poles, zeros):
     """
@@ -126,18 +128,16 @@ def angolo_di_arrivo_diretto(z, poles, zeros):
     sumz = 0
     sump = 0
     for p in poles:
-        sumz += np.angle(z - p, deg=True)
+        sump += np.angle(z - p, deg=True)
     for zz in zeros:
         if abs(zz - z) > 1e-8:
-            sump += np.angle(z - zz, deg=True)
-    theta = -180 - sumz + sump
+            sumz += np.angle(z - zz, deg=True)
+    theta = 180 + sump - sumz
     while theta > 180:
         theta -= 360
     while theta < -180:
         theta += 360
-
     return theta
-
 
 def angolo_di_partenza_inverso(p, poles, zeros):
     return angolo_di_partenza_diretto(p, poles, zeros) - 180.0
@@ -145,18 +145,114 @@ def angolo_di_partenza_inverso(p, poles, zeros):
 def angolo_di_arrivo_inverso(z, poles, zeros):
     return angolo_di_arrivo_diretto(z, poles, zeros) - 180.0
 
+# ---------------------------------------------------------
+
+def radici_multiple_plot(ax, direct, poles, zeros):
+    # POLI E ZERI (ANELLO APERTO) MULTIPLI
+    # Dividono il piano in un numero di parti equiangole e simmetriche
+    # pari alla molteplicità
+
+    # ATTENZIONE
+    # Per semplicita consideriamo poli e zeri reali
+    # (non so se può dare poli complessi coniugati a molteplicità maggiore di 1)
+
+    # Come facciamo a riconoscere come divide il piano ?
+    # dobbiamo sfruttare la conoscenza dell'asse reale
+    poles_dict = dict(Counter(poles))
+    zeros_dict = dict(Counter(zeros))
+    poles_dict = {k: v for k, v in poles_dict.items() if v > 1 and v.imag == 0}
+    zeros_dict = {k: v for k, v in zeros_dict.items() if v > 1 and v.imag == 0}
+
+    asse_reale = [np.real(s) for s in list(poles) + list(zeros)]
+    asse_reale.append(-np.inf)
+    asse_reale.append(np.inf)
+    asse_reale = np.sort(asse_reale)
+
+    for p in poles_dict.keys():
+        for i in range(len(asse_reale)):
+            if p.real < asse_reale[i]:
+                right_roots = len(asse_reale) - 1 - i
+                break
+        
+        pole_thetas = None
+
+        if direct:
+            if right_roots % 2 != 0:
+                # Allora il polo si sposta a destra
+                pole_thetas = [0.0]
+                for i in range(1, poles_dict.get(p)):
+                    pole_thetas.append(pole_thetas[i-1] + (360.0 / poles_dict.get(p)))
+                print("YOO si sposta a destra")
+                print(pole_thetas)
+            if (right_roots + poles_dict.get(p)) % 2 != 0:
+                # Allora il polo si sposta a sinistra
+                pole_thetas = [180.0]
+                for i in range(1, poles_dict.get(p)):
+                    pole_thetas.append(pole_thetas[i-1] + (360.0 / poles_dict.get(p)))
+        else:
+            if right_roots % 2 == 0:
+                # Allora il polo si sposta a destra
+                pole_thetas = [0.0]
+                for i in range(1, poles_dict.get(p)):
+                    pole_thetas.append(pole_thetas[i-1] + (360.0 / poles_dict.get(p)))
+            if (right_roots + poles_dict.get(p)) % 2 == 0:
+                # Allora il polo si sposta a sinistra
+                pole_thetas = [180.0]
+                for i in range(1, poles_dict.get(p)):
+                    pole_thetas.append(pole_thetas[i-1] + (360.0 / poles_dict.get(p)))
+        
+        if pole_thetas is None:
+            if poles_dict.get(p) % 2 == 0:
+                # Siamo in grado di dividere il piano in parti uguali
+                # perché sappiamo che deve essere simmetrico e non va né a destra né a sinistra
+                pole_thetas = [180.0 / poles_dict.get(p)]
+                for i in range(1, poles_dict.get(p)):
+                    pole_thetas.append(pole_thetas[i-1] + (360.0 / poles_dict.get(p)))
+            else:
+                print(f"ATTENZIONE: non siamo in grado di dividere il piano in {poles_dict.get(p)} part")
+                continue
+            
+        for theta in pole_thetas:
+            th = np.deg2rad(theta)
+
+            length = 0.8
+
+            # vettore direzione normalizzato
+            dx = length*np.cos(th)
+            dy = length*np.sin(th)
+
+            ax.annotate(
+                '',
+                xy=(p + 1.2*dx, 0.0 + 1.2*dy),
+                xytext=(p, 0.0),
+                arrowprops=dict(
+                    arrowstyle='->',
+                    color='green',
+                    lw=1.5,
+                    shrinkA=0,
+                    shrinkB=0,
+                    label="Direzione partenza del polo"
+                ),
+                zorder=5
+            )
 
 def annotated_root_locus_plot(
-        title,
+        direct,
         G,
         poles,
         zeros,
         centroid,
-        asym_angles,
+        asym_angle,
         breaks,
         angolo_di_partenza,
         angolo_di_arrivo
         ):
+    """
+    direct è True o False: indica se è diretto o inverso
+    """
+    
+    n = len(poles)
+    m = len(zeros)
 
     fig, ax = plt.subplots(figsize=(9, 9))
     ax.set_aspect('equal', adjustable='datalim')
@@ -189,6 +285,9 @@ def annotated_root_locus_plot(
                 linewidth=2,
                 zorder=20
             )
+    
+       
+    radici_multiple_plot(ax, direct, poles, zeros)
 
     # CENTRO DEGLI ASINTOTI
     if centroid is not None:
@@ -200,14 +299,38 @@ def annotated_root_locus_plot(
             label='Centro degli asintoti'
         )
 
-        # asintoti
-        L = 200
+        # ASINTOTI
+        # Come si ricavano? dipende da asse reale:
+        # se so che un semiasse reale è asintoto e l'angolo tra essi (asym_angle)
+        # allora li so disegnare
+
+        q = n - m
+
+        length = 200
+
+        # Controlliamo se un semiasse reale è asintoto
+        if direct:
+            # Nel caso di luogo delle radici diretto
+            asym_angles = []
+            for k in range(q):
+                theta = (2*k + 1) * 180 / q
+                asym_angles.append(theta)
+        else:
+            # Nel caso di luogo delle radici inverso
+            # il semiasse reale verso +infinito è sempre asintoto
+            asym_angles = [0.0]
+            for i in range(1, q):
+                asym_angles.append(asym_angles[i-1] + asym_angle)
 
         for theta in asym_angles:
+            if theta % 180.0 == 0:
+                # Non disegniamo gli asintitoti piatti dell'asse reale
+                continue
+
             th = np.deg2rad(theta)
 
-            x = [centroid, centroid + L*np.cos(th)]
-            y = [0, L*np.sin(th)]
+            x = [centroid, centroid + length*np.cos(th)]
+            y = [0, length*np.sin(th)]
 
             ax.plot(
                 x,
@@ -220,12 +343,40 @@ def annotated_root_locus_plot(
     for b in breaks.keys():
         ax.vlines(
             b,
-            -0.5,
-            0.5,
-            colors="#FF9900",
+            -0.3,
+            0.3,
+            colors="#E46E00",
             linewidth=3,
-            label='Punto multiplo'
+            label='Punto multiplo',
+            zorder=10
         )
+
+        # i punti multipli dividono il piano in numero poli * molteplicita
+        plane_divisions = 2 * (breaks.get(b) + 1)
+        for theta in np.linspace(360.0 / plane_divisions, 360.0, plane_divisions, True):
+            th = np.deg2rad(theta)
+
+            length = 0.8
+
+            # vettore direzione normalizzato
+            dx = length*np.cos(th)
+            dy = length*np.sin(th)
+
+            ax.annotate(
+                '',
+                xy=(b + 1.2*dx, 0.0 + 1.2*dy),
+                xytext=(b, 0.0),
+                arrowprops=dict(
+                    arrowstyle='->',
+                    color='orange',
+                    lw=1.5,
+                    shrinkA=0,
+                    shrinkB=0,
+                    label="Divisione del punto multiplo"
+                ),
+                zorder=5
+            )
+
 
     # FRECCE DI PARTENZA
     for p in poles:
@@ -264,14 +415,54 @@ def annotated_root_locus_plot(
 
 
     # FRECCE DI ARRIVO
+    for z in zeros:
+        if z.imag != 0.0:
+
+            theta = angolo_di_arrivo(z, poles, zeros)
+            th = np.deg2rad(theta)
+
+            length = 1.5
+
+            # vettore direzione normalizzato
+            dx = length*np.cos(th)
+            dy = length*np.sin(th)
+
+            ax.annotate(
+                '',
+                xy=(z.real, z.imag),
+                xytext=(z.real + 1.2*dx, z.imag + 1.2*dy),
+                arrowprops=dict(
+                    arrowstyle='->',
+                    color='red',
+                    lw=1.8,
+                    shrinkA=0,
+                    shrinkB=0
+                ),
+                zorder=10
+            )
+            
+            # Vettore riferimento per capire angolo
+            ax.plot(
+                [z.real, z.real + length],
+                [z.imag, z.imag],
+                'r--',
+                linewidth=1.5
+            )
+
+
     handles, labels = ax.get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
     ax.legend(by_label.values(), by_label.keys())
-    ax.set_title(title)
+    if direct:
+        ax.set_title("Luogo delle radici diretto (k>0)")
+    else:
+        ax.set_title("Luogo delle radici inverso (k<0)")
+
 
     plt.show()
 
 
+# ---------------------------------------------------------
 
 def annotated_root_locus(G):
 
@@ -310,19 +501,14 @@ def annotated_root_locus(G):
     q = n - m
 
     centroid = None
-    asym_angles = []
+    asym_angle = 360.0 / q
     if q > 0:
         centroid = (np.sum(poles).real - np.sum(zeros).real) / q
 
         print(f"\nNumero asintoti = {q}")
         print(f"Centro degli asintoti = {centroid:.4f}")
 
-        print(f"Angoli tra asintoti: {360.0 / q}")
-        print("Angoli asintoti:")
-        for k in range(q):
-            theta = (2*k + 1) * 180 / q
-            asym_angles.append(theta)
-            print(f"   {theta:.2f}°")
+        print(f"Angoli tra asintoti: {asym_angle}")
 
     # ----- PUNTI MULTIPLI -----
     breaks = punti_multipli(G)
@@ -344,9 +530,12 @@ def annotated_root_locus(G):
                     inverse_breaks[b] = breaks[b]
                     direzione_luogo = "inverso"
 
-        print(f"   {b:.3f};  molteplicità: {breaks.get(b)};  appartiene al luogo {direzione_luogo}")
+        print(f"   {b:.3f};  molteplicità: {breaks.get(b)};  appartiene al luogo {direzione_luogo};")
+        print(f"   Divide il piano in 2 * (molteplicità + 1) = {2 * (breaks.get(b) + 1)} parti (angolo: {360.0 / (2 * (breaks.get(b) + 1))})")
+        print()
 
     # ----- POLI E ZERI (ANELLO APERTO) MULTIPLI -----
+
 
     # ----- ANGOLI DI PARTENZA -----
     # Se si ha dei poli complessi
@@ -377,25 +566,26 @@ def annotated_root_locus(G):
 
 
     # ----- PLOT -----
-
+    # Luogo diretto
     annotated_root_locus_plot(
-        "Luogo delle radici diretto (k>0)",
+        True,
         G,
         poles,
         zeros,
         centroid,
-        asym_angles,
+        asym_angle,
         direct_breaks,
         angolo_di_partenza_diretto,
         angolo_di_arrivo_diretto
     )
+    # Luogo inverso
     annotated_root_locus_plot(
-        "Luogo delle radici inverso (k<0)",
+        False,
         -G,
         poles,
         zeros,
         centroid,
-        asym_angles, 
+        asym_angle, 
         inverse_breaks,
         angolo_di_partenza_inverso,
         angolo_di_arrivo_inverso
@@ -427,8 +617,8 @@ punti_multipli(G)
 
 
 #fig, ax = plt.subplots(figsize=(8,8))
-ctrl.root_locus(G, grid=True)
-plt.show()
+#ctrl.root_locus(G, grid=True)
+#plt.show()
 
 #fig, ax = plt.subplots(figsize=(8,8))
 #ctrl.root_locus_plot(
