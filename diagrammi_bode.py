@@ -5,10 +5,45 @@ import matplotlib.pyplot as plt
 import numpy as np
 import control as ctrl
 
+
+def my_dcgain(G):
+    """
+    Trova il guadagno statico
+    """
+
+    K = ctrl.dcgain(G)
+
+    if K == np.inf:
+        # K come guadagno di Bode: prodotto zeri reali / prodotto poli reali (esclusa origine)
+        num_arr = np.array(G.num[0][0], dtype=float)
+        den_arr = np.array(G.den[0][0], dtype=float)
+
+        # Rimuovi i fattori s dall'origine dividendo per s^n
+        num_trimmed = np.trim_zeros(num_arr[::-1], 'f')[::-1]  # rimuove zeri in coda
+        den_trimmed = np.trim_zeros(den_arr[::-1], 'f')[::-1]
+
+        # K è il rapporto dei termini costanti
+        K = num_trimmed[-1] / den_trimmed[-1]
+        
+        return K
+
+
 def analyze_tf(G):
     z = ctrl.zeros(G)
     p = ctrl.poles(G)
-    K = ctrl.dcgain(G)
+    K = my_dcgain(G)
+
+    if K == np.inf:
+        # K come guadagno di Bode: prodotto zeri reali / prodotto poli reali (esclusa origine)
+        num_arr = np.array(G.num[0][0], dtype=float)
+        den_arr = np.array(G.den[0][0], dtype=float)
+
+        # Rimuovi i fattori s dall'origine dividendo per s^n
+        num_trimmed = np.trim_zeros(num_arr[::-1], 'f')[::-1]  # rimuove zeri in coda
+        den_trimmed = np.trim_zeros(den_arr[::-1], 'f')[::-1]
+
+        # K è il rapporto dei termini costanti
+        K = num_trimmed[-1] / den_trimmed[-1]
 
     tol = 1e-8
 
@@ -32,7 +67,19 @@ def approximated_module(G, omega):
 
     z = ctrl.zeros(G)
     p = ctrl.poles(G)
-    K = ctrl.dcgain(G)
+    K = my_dcgain(G)
+
+    if K == np.inf:
+        # K come guadagno di Bode: prodotto zeri reali / prodotto poli reali (esclusa origine)
+        num_arr = np.array(G.num[0][0], dtype=float)
+        den_arr = np.array(G.den[0][0], dtype=float)
+
+        # Rimuovi i fattori s dall'origine dividendo per s^n
+        num_trimmed = np.trim_zeros(num_arr[::-1], 'f')[::-1]  # rimuove zeri in coda
+        den_trimmed = np.trim_zeros(den_arr[::-1], 'f')[::-1]
+
+        # K è il rapporto dei termini costanti
+        K = num_trimmed[-1] / den_trimmed[-1]
 
     tol = 1e-8
 
@@ -46,7 +93,7 @@ def approximated_module(G, omega):
     complex_poles = [x for x in p if abs(x.imag) >= tol]
     complex_zeros = [x for x in z if abs(x.imag) >= tol]
 
-    # modulo iniziale (orizzontale)
+    # modulo iniziale(guadagno statico)
     Kabs = abs(K) if abs(K) > tol else tol
     module = np.ones_like(omega) * (20 * np.log10(Kabs))
 
@@ -122,13 +169,6 @@ def approximated_module(G, omega):
                 module[k] += 40 * np.log10(w / wn)
 
     return module
-    plt.figure(figsize=(10, 6))
-    plt.semilogx(omega, module, linewidth=2)
-    plt.grid(True, which='both')
-    plt.xlabel("ω [rad/s]")
-    plt.ylabel("Modulo [dB]")
-    plt.title("Diagramma di Bode approssimato (asintotico)")
-    plt.show()
 
 
 def approximated_phase(G, omega):
@@ -246,13 +286,6 @@ def approximated_phase(G, omega):
             phase[k] += contrib
 
     return phase
-    plt.figure(figsize=(10, 6))
-    plt.semilogx(omega, phase, linewidth=2)
-    plt.grid(True, which='both')
-    plt.xlabel("ω [rad/s]")
-    plt.ylabel("Fase [deg]")
-    plt.title("Diagramma di fase asintotico")
-    plt.show()
 
 # -------------------------------------------------------------------
 
@@ -273,7 +306,7 @@ def show_asymptotic(G, omega):
     ax2.grid(True, which="both")
 
     plt.tight_layout()
-    plt.show()   # 👈 blocca finché non chiudi
+    plt.show()
 
 
 def show_real(G, omega):
@@ -385,7 +418,7 @@ def show_both(G, omega):
 
     plt.show()
 
-# -------------------------------------------------------------------
+# ===================================================================
 
 # P(s) = N(s) / D(s)
 # dove N(s) e D(s) sono polinomi qualsiasi (non per forza monico)
@@ -401,17 +434,18 @@ def show_both(G, omega):
 num = [200, 20]
 den = [1/400, 1/400 + 1/20, 1/20 + 1, 1]
 
-G = ctrl.TransferFunction(num, den)
+num = [1, 20, 100]
+den = [1, 200, 10000, 0]
 
+G = ctrl.TransferFunction(num, den)
 
 print(G)
 print()
 analyze_tf(G)
 
-# -------------------------------------
-
 # dominio personalizzato(rad/s)
-omega = np.logspace(-2, 3, 1000)   # da 10^-2 a 10^3
+# es. np.logspace(-2, 3, 1000) va da 10^-2 a 10^3
+omega = np.logspace(-2, 4, 1000)
 
 # asintotico
 show_asymptotic(G, omega)
@@ -421,5 +455,3 @@ show_real(G, omega)
 
 # confronto
 show_both(G, omega)
-
-plt.show()

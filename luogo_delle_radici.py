@@ -182,8 +182,6 @@ def radici_multiple_plot(ax, direct, poles, zeros):
                 pole_thetas = [0.0]
                 for i in range(1, poles_dict.get(p)):
                     pole_thetas.append(pole_thetas[i-1] + (360.0 / poles_dict.get(p)))
-                print("YOO si sposta a destra")
-                print(pole_thetas)
             if (right_roots + poles_dict.get(p)) % 2 != 0:
                 # Allora il polo si sposta a sinistra
                 pole_thetas = [180.0]
@@ -609,6 +607,9 @@ den = [1, 3, 2, 0]
 num = [1, 20, 101]
 den = [1, 15, 75, 125, 0]
 
+num = [1, 2, 1]
+den = [1, 200, 10000, 0]
+
 G = ctrl.TransferFunction(num, den)
 
 print()
@@ -617,8 +618,11 @@ punti_multipli(G)
 
 
 #fig, ax = plt.subplots(figsize=(8,8))
-#ctrl.root_locus(G, grid=True)
-#plt.show()
+ctrl.root_locus(G, grid=True)
+plt.show()
+
+ctrl.root_locus(-G, grid=True)
+plt.show()
 
 #fig, ax = plt.subplots(figsize=(8,8))
 #ctrl.root_locus_plot(

@@ -12,15 +12,15 @@ def __check_matrix(A, square=False):
     '''
     if isinstance(A, np.ndarray):
         if A.ndim != 2:
-            raise ValueError(f"A deve essere 2D, ha {A.ndim} dimensioni")
+            raise ValueError(f"La matrice deve essere 2D, ha {A.ndim} dimensioni")
         if not np.issubdtype(A.dtype, np.number):
-            raise TypeError(f"A deve contenere numeri, dtype è {A.dtype}")
+            raise TypeError(f"La matrice deve contenere numeri, dtype è {A.dtype}")
 
     elif isinstance(A, list):
         if len(A) == 0:
             raise ValueError("A non può essere vuota")
         if not isinstance(A[0], list):
-            raise TypeError("A deve essere una lista di liste")
+            raise TypeError("La matrice deve essere una lista di liste")
         m = len(A[0])
         for i, row in enumerate(A):
             if not isinstance(row, list):
@@ -32,15 +32,15 @@ def __check_matrix(A, square=False):
                     raise TypeError(f"A[{i}][{j}] deve essere un numero")
 
     else:
-        raise TypeError(f"A deve essere una lista o numpy ndarray, è {type(A)}")
+        raise TypeError(f"La matrice deve essere una lista o numpy ndarray, è {type(A)}")
     
     if square:
         aux = np.array(A)
         if aux.shape[0] != aux.shape[1]:
-            raise ValueError(f"A deve essere una matrice quadrata, shape è {aux.shape}")
+            raise ValueError(f"La matrice deve essere una matrice quadrata, shape è {aux.shape}")
     
     if not np.isrealobj(np.array(A)):
-        raise ValueError("A deve essere una matrice di numeri reali")
+        raise ValueError("La matrice deve essere una matrice di numeri reali")
     
 
 def __trova_q(A, eigenvalue, m, tol=1e-9):
@@ -245,7 +245,7 @@ def osservabilita(A, C):
     print()
 
 
-def raggiungibilita2(A, B):
+def raggiungibilita_PBH(A, B):
     '''
     Calcola se il sistema è raggiungibile usando il lemma PBH:
     per ogni lambda:
@@ -284,7 +284,7 @@ def raggiungibilita2(A, B):
         print()
 
 
-def osservabilita2(A, C):
+def osservabilita_PBH(A, C):
     '''
     Calcola se il sistema è osservabile usando il lemma PBH:
     per ogni lambda:

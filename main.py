@@ -9,56 +9,19 @@ A = [
     [0, 0, 0, -8]
 ]
 
-print(np.matrix(A), "\n")
-
-stabilita(A)
-
 B = [
     [0],
     [1],
     [0],
     [1]
 ]
-
-raggiungibilita(A, B)
 
 C = [
     [1, 0, 1, 0]
 ]
 
+stabilita(A)
+raggiungibilita(A, B)
 osservabilita(A, C)
-
-
-
-A = [
-    [-1, 1, 0, 0, 0, 0, 0],
-    [0, -1, 1, 0, 0, 0, 0],
-    [0, 0, -1, 0, 0, 0, 0],
-    [0, 0, 0, -1, 1, 0, 0],
-    [0, 0, 0, 0, -1, 0, 0],
-    [0, 0, 0, 0, 0, 2, 1],
-    [0, 0, 0, 0, 0, 0, 2]
-]
-
-B = [
-    [0, 0],
-    [0, 0],
-    [0, 1],
-    [0, 0],
-    [1, 0],
-    [0, 0],
-    [1, 1]
-]
-
-B = [
-    [0],
-    [0],
-    [1],
-    [0],
-    [1],
-    [0],
-    [1]
-]
-
-raggiungibilita2(A, B)
-osservabilita2(A, C)
+raggiungibilita_PBH(A, B)
+osservabilita_PBH(A, C)
