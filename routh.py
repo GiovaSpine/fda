@@ -1,12 +1,6 @@
 import numpy as np
+import sympy as sp
 from fractions import Fraction
-
-"""
-x = 3.6666666666666674
-f = Fraction(x).limit_denominator(100)
-print(f)        # 11/3
-print(f.numerator, f.denominator)  # 11 3
-"""
 
 
 def print_routh_table(routh):
@@ -14,10 +8,13 @@ def print_routh_table(routh):
     Stampa la tabella di Routh indentata correttamente
     """
     def format_elem(elem):
-        if elem != int(elem):
+        if isinstance(elem, float):
             return str(Fraction(elem).limit_denominator(100))
-        else:
+        elif isinstance(elem, int):
             return str(int(elem))
+        else:
+            return str(elem)
+            
 
     # Prima passata: calcola tutte le stringhe e trova la larghezza massima
     formatted = []
@@ -56,11 +53,13 @@ def routh_table(G):
     # Poiché le prime due righe della tabella di Routh sono note
     # dobbiamo fare len(G) - 2 passaggi
 
+
     for i in range(2, len(G)):
-        row1 = routh[i - 2]  # la riga sopra sopra l'attuale
-        row2 = routh[i - 1]  # la riga sopra l'attuale
+        row1 = routh[i - 2]  # La riga sopra sopra l'attuale
+        row2 = routh[i - 1]  # La riga sopra l'attuale
 
         if len(row2) != len(row1):
+            # Aggiungiamo uno 0 in fondo se neccessario
             row2.append(0)
 
         # Creiamo la prossima riga
@@ -70,27 +69,41 @@ def routh_table(G):
         n = len(row1) - 1 if row1[-1] != 0 else len(row1) - 2
         
         for j in range(1, n + 1):
-            M = np.array(
-                [[row1[0], row1[j]],
-                 [row2[0], row2[j]]]
-            )
+            # Il nuovo elemento è meno il determinante della matrice 2x2 che si ottiene
+            # dalla colonna a sinistra con la colonna attuale, diviso row2[0], ma:
             # ATTENZIONE row2[0] può essere 0
             if row2[0] == 0:
-                print("Attenzione: si ha una divisione per 0.")
-                print("L'algoritmo non è in grado di risolverlo.")
-                exit(1)
-            new_row.append(-np.linalg.det(M) / row2[0])
+                # consideriamo 0 come E (epsilon)
+                row2[0] = sp.Symbol('E')
+
+            new_elem = (row2[0] * row1[j] - row1[0] * row2[j]) / row2[0]
+            
+            new_row.append(new_elem)
 
         routh.append(new_row)
 
-    print_routh_table(routh)
+    return routh
 
 
 # ===================================================================
 
 # data una G(s) come polinomio
-G = [1, 3, 5, 4, 2]
-# G = [1, 1, 4, 3, 2, 4, 2]
-# G = [1, 0, 1, 2]
+# es. [1, 3, 5, 4, 2] --> s^4 + 3s^3 + 5s^2 + 4s + 2
+# si possono usare simboli, definendoli con sp.Symbol('k')
+# es.
+#   k = sp.Symbol('k')
+#   G = [1, 3, 2, k] --> s^3 + 3s^2 + 2s + k
 
-routh_table(G)
+G = [1, 3, 5, 4, 2]
+G = [1, 1, 4, 3, 2, 4, 2]
+G = [1, 0, 1, 2]
+
+k = sp.Symbol('k')
+G = [1, 3, 2, k]
+
+b = sp.Symbol('b')
+c = sp.Symbol('c')
+G = [1, b, c, 1]
+
+routh = routh_table(G)
+print_routh_table(routh)
