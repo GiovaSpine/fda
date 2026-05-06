@@ -3,7 +3,7 @@ import sympy as sp
 from fractions import Fraction
 
 
-def print_routh_table(routh):
+def print_routh_table(routh, additional_conditions=[]):
     """
     Stampa la tabella di Routh indentata correttamente
     """
@@ -38,11 +38,23 @@ def print_routh_table(routh):
             if s:
                 print(s.ljust(col_width), end='')
         print()
+    print()
+    
+    # Se si aveano condizioni aggiuntive, vanno stampate
+    print("Condizioni aggiuntive:")
+    for ac in additional_conditions:
+        print("{ ", ac, " > 0", sep='')
 
 
-def routh_table(G):
+def routh_table(G, simplify=False):
     """
     Calcola la tabella di Routh
+
+    Parametri:
+        G (list): La funzione di trasferimento
+        simplify (bool): Indica se è richiesto (True) la semplificazione
+                         dell'espressione, moltiplicando ogni riga per
+                         il denominatore del primo elemento.
     """
 
     P = np.array(G)
@@ -53,6 +65,8 @@ def routh_table(G):
     # Poiché le prime due righe della tabella di Routh sono note
     # dobbiamo fare len(G) - 2 passaggi
 
+    # Condizioni aggiuntive per valutare la stabilità
+    additional_conditions = []
 
     for i in range(2, len(G)):
         row1 = routh[i - 2]  # La riga sopra sopra l'attuale
@@ -77,12 +91,35 @@ def routh_table(G):
                 row2[0] = sp.Symbol('E')
 
             new_elem = (row2[0] * row1[j] - row1[0] * row2[j]) / row2[0]
+
+            if simplify:
+                if j == 1:
+                    # Se si ha un denominatore con simboli per il primo elemento,
+                    # moltiplichiamolo nella riga per semplificarla
+                    num, den = sp.fraction(new_elem)
+                    if not den.free_symbols:
+                        # den è una costante numerica
+                        den = 1.0
+                    else:
+                        # den contiene simboli, lo useremo per moltiplicarlo con la riga
+                        # LO DOBBIAMO SEGNARE, sennò si perde tale condizione
+                        additional_conditions.append(den)
+                        new_elem = num
+                        new_elem = sp.expand(new_elem)  # espandi
+                else:
+                    new_elem *= den
             
             new_row.append(new_elem)
 
         routh.append(new_row)
+    
+    # Attenzione: se abbiamo moltiplicato i denominatori per le righe
+    # li dobbiamo ricordare per la valutazione della stabilità
 
-    return routh
+    if simplify:
+        print_routh_table(routh, additional_conditions=additional_conditions)
+    else:
+        print_routh_table(routh)
 
 
 # ===================================================================
@@ -96,7 +133,7 @@ def routh_table(G):
 
 G = [1, 3, 5, 4, 2]
 G = [1, 1, 4, 3, 2, 4, 2]
-G = [1, 0, 1, 2]
+#G = [1, 0, 1, 2]
 
 k = sp.Symbol('k')
 G = [1, 3, 2, k]
@@ -105,5 +142,6 @@ b = sp.Symbol('b')
 c = sp.Symbol('c')
 G = [1, b, c, 1]
 
-routh = routh_table(G)
-print_routh_table(routh)
+G = [1, 20-k, 7, 5, 1]
+
+routh_table(G, simplify=True)
