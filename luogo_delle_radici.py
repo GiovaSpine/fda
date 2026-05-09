@@ -476,6 +476,83 @@ def annotated_root_locus(G):
     n = len(poles)
     m = len(zeros)
 
+    # ----- ASSE REALE -----
+    # per determinare quale x reale appartiene a luogo diretto e inverso
+    asse_reale = [np.real(s) for s in list(poles) + list(zeros)]
+    asse_reale.append(-np.inf)
+    asse_reale.append(np.inf)
+    asse_reale = np.sort(asse_reale)
+
+    # ----- ASINTOTI -----
+    q = n - m
+
+    centroid = None
+    asym_angle = 360.0 / q
+    if q > 0:
+        centroid = (np.sum(poles).real - np.sum(zeros).real) / q
+
+    # ----- PUNTI MULTIPLI -----
+    breaks = punti_multipli(G)
+
+    direct_breaks = {}
+    inverse_breaks = {}
+
+    for b in breaks.keys():
+        # Verifichiamo se appartiene al luogo diretto (k>0) o inverso (k<0)
+        for i in range(len(asse_reale) - 1):
+            if b > asse_reale[i] and b <= asse_reale[i+1]:
+                if (len(asse_reale) - i - 2) % 2 != 0:  # -2 perché -inf e inf non sono singolarità
+                    # Allora b appartiene al luogo diretto
+                    direct_breaks[b] = breaks[b]
+                else:
+                    # Allora b appartiene al luogo inverso
+                    inverse_breaks[b] = breaks[b]
+
+    # ----- INTERESEZIONE ASSE IMMAGINARIO -----
+    # ...
+
+
+    # ----- PLOT -----
+    # Luogo diretto
+    annotated_root_locus_plot(
+        True,
+        G,
+        poles,
+        zeros,
+        centroid,
+        asym_angle,
+        direct_breaks,
+        angolo_di_partenza_diretto,
+        angolo_di_arrivo_diretto
+    )
+    # Luogo inverso
+    annotated_root_locus_plot(
+        False,
+        -G,
+        poles,
+        zeros,
+        centroid,
+        asym_angle, 
+        inverse_breaks,
+        angolo_di_partenza_inverso,
+        angolo_di_arrivo_inverso
+    )
+
+
+def print_root_locus_points(G):
+
+    # ----- SINGOLARITA' -----
+    poles = np.array(ctrl.poles(G))
+    zeros = np.array(ctrl.zeros(G))
+
+    # poles e zeros possono avere imprecisioni
+    # del tipo -5.000026 e -4.999947 che sono la stessa radice
+    poles = roots_cleaning(poles)
+    zeros = roots_cleaning(zeros)
+
+    n = len(poles)
+    m = len(zeros)
+
     print("\n==============================")
     print("      LUOGO DELLE RADICI")
     print("==============================")
@@ -561,76 +638,35 @@ def annotated_root_locus(G):
     print()
 
     # ----- INTERESEZIONE ASSE IMMAGINARIO -----
+    # ...
 
-
-    # ----- PLOT -----
-    # Luogo diretto
-    annotated_root_locus_plot(
-        True,
-        G,
-        poles,
-        zeros,
-        centroid,
-        asym_angle,
-        direct_breaks,
-        angolo_di_partenza_diretto,
-        angolo_di_arrivo_diretto
-    )
-    # Luogo inverso
-    annotated_root_locus_plot(
-        False,
-        -G,
-        poles,
-        zeros,
-        centroid,
-        asym_angle, 
-        inverse_breaks,
-        angolo_di_partenza_inverso,
-        angolo_di_arrivo_inverso
-    )
-
-    
 
 # ===================================================================
 
 # data G(s) espressa come divisione di polinomi
 # es. den = [1, 3, 2, 0] è s^3 + 3s^2 + 2s
-num = [1]
-den = [1, 3, 2, 0]
 
-#num = [1, 1]
-#den = [1, 9, 0, 0]
-
-#num = [1, 5]
-#den = [1, 6, 109, 0]
-
-num = [1, 20, 101]
-den = [1, 15, 75, 125, 0]
-
-num = [1, 2, 1]
-den = [1, 200, 10000, 0]
+num = [3.6]
+den = [1, 4, 9, 0]
 
 G = ctrl.TransferFunction(num, den)
 
+# Mostra i vari punti
+print_root_locus_points(G)
+
+# Aspettare che utente prema invio prima di mostrare i risultati
+scelta = input("\nPremi INVIO per vedere i grafici o 'q' per uscire: ")
+if scelta.strip().lower() == 'q':
+    exit(0)
 print()
-punti_multipli(G)
 
-
-
-#fig, ax = plt.subplots(figsize=(8,8))
+# Diagrammi veri
 ctrl.root_locus(G, grid=True)
 plt.show()
 
 ctrl.root_locus(-G, grid=True)
 plt.show()
 
-#fig, ax = plt.subplots(figsize=(8,8))
-#ctrl.root_locus_plot(
-#    -G,
-#    ax=ax,
-#    color='red'
-#)
-#plt.show()
-
-annotated_root_locus(G)  # seconda finestra annotata
+# Diagrammi annotati
+annotated_root_locus(G)
 
