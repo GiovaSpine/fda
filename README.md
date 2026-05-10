@@ -2,10 +2,12 @@ Vari codici vibe-codati per la risoluzione di esercizi di Fondamenti di Automati
 
 Alcuni esercizi risolvibili sono:
 - Criterio di Routh
-- Diagramma di Bode
+- Diagrammi di Bode
+- Diagramma di Nyquist
 - Luogo delle radici
 - Modi, raggiungibilità e osservabilità di sistemi in forma di stato
 - Valutazione se due espressioni trigonometriche scritte diversamente sono uguali (utile se si risolve uno stesso esercizio sulle Trasformate Continue di Fourier con metodi diversi)
+- Semplificazione di espressioni complesse nella forma a + jb (utile per Bode e Nyquist)
 
 # Installazione
 

@@ -8,7 +8,7 @@ from utily import *
 def quadranti(min_phase, max_phase):
     """
     Stampa in quali quadranti si trova il diagramma di Nyquist in base alla fase.
-    Si ricoda che:
+    Si ricorda che:
     
         secondo | primo
         --------|--------
@@ -49,7 +49,12 @@ def quadranti(min_phase, max_phase):
         else:
             quadrante = "primo, secondo, terzo e quarto"
 
-    print(f"Siamo nei quadranti: {quadrante}")
+    print(f"Per w che va da 0 all'infinito siamo nei quadranti: {quadrante}")
+    print("Si ricorda che:\n\n"
+        "secondo | primo\n"
+        "--------|--------\n"
+        " terzo  | quarto\n"
+          )
     print()
 
 
@@ -86,18 +91,19 @@ def calcola_G_jw(num, den):
     return G_jw
 
 
-def analisi_limiti(G_jw):
+def analisi_limiti(G_jw, num, den):
     """
-    Data G(jw) calcola i limiti per w->0 e w->inf.
-    
-    Parametri:
-        G_jw: La risposta in frequenza
+    Data G(jw), num e den calcola i limiti per w->0 e w->inf, usando sympy
+    e i termini dominanti per w->0 e w->inf.
     """
     
-    w = sp.symbols('s w', real=True)
+    w = sp.symbols('w', real=True)
 
-    n = len(den) - 1  # grado numeratore
-    m = len(num) - 1  # grado denominatore
+    n = len(den) - 1  # grado denominatore
+    m = len(num) - 1  # grado numeratore
+
+    # Esiste un asintoto ? 
+    asintoto_exist = False
 
     # Limite w -> 0
     # Si comporta circa come a(jw)^k1 / b(jw)^k2, dove k1 e k2 sono gradi minimi
@@ -117,16 +123,17 @@ def analisi_limiti(G_jw):
         # Tende all'infinito
         print(f"La funzione tende all'infinito come 1/(jw)^{k2 - k1}")
         print(f"La fase: {(k2 - k1) * -90.0}")
+        asintoto_exist = True
     else:
         # Tende a 0
-        print(f"La funzione tende a 0 come (jw)^{k1 - k2}")
-        print(f"La fase: ?")
-
+        # Non credo posso accadere
+        raise ValueError("ERRORE: per w -> 0, G(jw) -> 0. Significherebbe un diagramma di Bode che scende all'infinito a sinistra")
+    print()
 
     # Limite w -> inf
     # Si comporta circa come 1 / (jw)^(n-m)
     # (allora l'ampiezza è sempre zero ? dipende se m < n)
-    print(f"\nLimite w --> inf = ", end='')
+    print(f"Limite w --> inf = ", end='')
     lim_inf = sp.limit(G_jw, w, sp.oo)
     lim_inf = sp.simplify(lim_inf)
     print(f"G(j*inf) = {lim_inf}")
@@ -141,6 +148,68 @@ def analisi_limiti(G_jw):
     else:
         # IMPOSSIBILE per i sistemi causali
         raise ValueError(f"ERRORE: il grado del numeratore {m} è maggiore di quello del denominatore {n}")
+    print()
+    
+    if asintoto_exist:
+        print("Poiché l'ampiezza tende all'infinito per w -> 0 si ha un asintoto")
+        # Separa parte reale e immaginaria
+        expr_expanded = sp.simplify(G_jw)
+        re = sp.re(expr_expanded)
+        im = sp.im(expr_expanded)
+
+        re_simplified = sp.simplify(re)
+        im_simplified = sp.simplify(im)
+        print(f"G(jw) = a(w)+ jb(w) = ")
+        print(f"      = ({re_simplified}) + j*({im_simplified})")
+        print()
+        print(f"   Re = {re_simplified}")
+        print(f"   Im = {im_simplified}")
+        print()
+
+        lim_re_0 = sp.limit(re_simplified, w, 0)
+        lim_re_0 = sp.simplify(lim_re_0)
+        lim_im_0 = sp.limit(im_simplified, w, 0)
+        lim_im_0 = sp.simplify(lim_im_0)
+        print(f"Re{{G(j*0)}} = {lim_re_0}")
+        print(f"Im{{G(j*0)}} = {lim_im_0}")
+        print()
+
+        if abs(lim_re_0) != sp.oo and abs(lim_im_0) == sp.oo:
+            print(f"Asintoto reale in {lim_re_0} = {lim_re_0.evalf(4)}")
+        elif abs(lim_im_0) != sp.oo and abs(lim_re_0) == sp.oo:
+            print(f"Asintoto immaginario in {lim_im_0} = {lim_im_0.evalf(4)}")
+        elif abs(lim_re_0) == sp.oo and abs(lim_im_0) == sp.oo:
+            # E' possibile che tendano entrambi all'infinito
+            # es. 1 / (s^2(s + 1))
+            # Si risolve con la sostituzione:
+            #   x = Re(G(jw)) = g1(w)
+            #   y = Im(G(jw)) = g2(w)
+            #   trovi w in funzione di y da g2(w)
+            #   sostituisci w con espressione di y in x
+            #   trovi x = g3(y)
+            print("Tendono entrambi a infinito")
+            print("Semplifichiamo le epressioni per w -> 0, sennò otteniamo espressioni complicate")
+            print("(sapendo che w^(k+1) va a 0 più in fretta di w^k per w -> 0)")
+            print()
+
+            w, x, y = sp.symbols('w x y', real=True)
+
+            # Termine dominante per w->0 (grado minimo)
+            re_dom = sp.series(re_simplified, w, 0, n=1).as_leading_term(w)
+            im_dom = sp.series(im_simplified, w, 0, n=1).as_leading_term(w)
+
+            print(f"Re (dominante) = {re_dom}")
+            print(f"Im (dominante) = {im_dom}")
+
+            # Sostituzione per ricavare x = f(y)
+            w_sol = sp.solve(sp.Eq(y, im_dom), w)[0]
+            curva = sp.simplify(re_dom.subs(w, w_sol))
+            print(f"L'asintoto è x = f(y) = {curva}")
+        else:
+            # Impossibile, almeno uno deve tendere all'infinito se G(j0) tende all'infinito
+            raise ValueError("ERRORE durante il calcolo dell'asintoto")
+        
+        print()
 
     return G_jw, lim0, lim_inf
 
@@ -152,18 +221,11 @@ def analisi_limiti(G_jw):
 
 # es. 2s^2 + 3 diventa [2, 0, 3]
 
-num = [1, 2, 1]
-den = [1, 200, 10000, 0]
-
-num = [1, 20, 100]
-den = [1, 200, 10000, 0]
+#num = [3.6]
+#den = [1, 4, 9, 0]
 
 num = [1]
-den = [1, 1,0, 0]
-
-num = [3.6]
-den = [1, 4, 9, 0]
-
+den = [1, 1, 0, 0]
 
 G = ctrl.TransferFunction(num, den)
 
@@ -201,12 +263,11 @@ quadranti(round(min(phase)), round(max(phase)))
 
 # ----- COMPORTAMENTO ASINTOTICO -----
 # Calcola comportamento per w piccolo e per w grande
-analisi_limiti(G_jw)
+analisi_limiti(G_jw, num, den)
 
-exit(1)
 
 # Aspettare che utente prema invio prima di mostrare i risultati
-scelta = input("\nPremi INVIO per vedere i grafici o 'q' per uscire: ")
+scelta = input("Premi INVIO per vedere i grafici o 'q' per uscire: ")
 if scelta.strip().lower() == 'q':
     exit(0)
 print()
