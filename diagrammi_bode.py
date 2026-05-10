@@ -1,67 +1,7 @@
 import numpy as np
 import control as ctrl
 import matplotlib.pyplot as plt
-
-import numpy as np
-import control as ctrl
-
-
-def my_dcgain(G):
-    """
-    Trova il guadagno statico
-    """
-
-    K = ctrl.dcgain(G)
-
-    if K == np.inf:
-        # K come guadagno di Bode: prodotto zeri reali / prodotto poli reali (esclusa origine)
-        num_arr = np.array(G.num[0][0], dtype=float)
-        den_arr = np.array(G.den[0][0], dtype=float)
-
-        # Rimuovi i fattori s dall'origine dividendo per s^n
-        num_trimmed = np.trim_zeros(num_arr[::-1], 'f')[::-1]  # rimuove zeri in coda
-        den_trimmed = np.trim_zeros(den_arr[::-1], 'f')[::-1]
-
-        # K è il rapporto dei termini costanti
-        K = num_trimmed[-1] / den_trimmed[-1]
-        
-    return K
-
-
-def analyze_tf(G):
-    z = ctrl.zeros(G)
-    p = ctrl.poles(G)
-    K = my_dcgain(G)
-
-    if K == np.inf:
-        # K come guadagno di Bode: prodotto zeri reali / prodotto poli reali (esclusa origine)
-        num_arr = np.array(G.num[0][0], dtype=float)
-        den_arr = np.array(G.den[0][0], dtype=float)
-
-        # Rimuovi i fattori s dall'origine dividendo per s^n
-        num_trimmed = np.trim_zeros(num_arr[::-1], 'f')[::-1]  # rimuove zeri in coda
-        den_trimmed = np.trim_zeros(den_arr[::-1], 'f')[::-1]
-
-        # K è il rapporto dei termini costanti
-        K = num_trimmed[-1] / den_trimmed[-1]
-
-    tol = 1e-8
-
-    origin_poles = np.sum(np.isclose(p, 0))
-
-    real_zeros = [x for x in z if abs(x.imag) < tol]
-    complex_zeros = [x for x in z if abs(x.imag) >= tol]
-
-    real_poles = [x for x in p if abs(x.imag) < tol]
-    complex_poles = [x for x in p if abs(x.imag) >= tol]
-
-    print("Guadagno statico:", K)
-    print("Poli nell'origine:", origin_poles)
-    print("Zeri reali:", real_zeros)
-    print("Zeri complessi:", complex_zeros)
-    print("Poli reali:", real_poles)
-    print("Poli complessi:", complex_poles)
-    print()
+from utily import *
 
 
 def approximated_module(G, omega, stampa=False):
@@ -570,13 +510,17 @@ den = [1, 4, 9, 0]
 
 G = ctrl.TransferFunction(num, den)
 
+
+# Dominio personalizzato di frequenze (rad/s)
+# es. np.logspace(-2, 3, 1000) va da 10^-2 a 10^3
+# è possibile cambiare il dominio per visualizzare meglio il gradico
+omega = np.logspace(-2, 4, 1000)
+
+# -------------------------------------
+
 # Stampa qualche informazione sulla G(s)
 print(G, "\n")
 analyze_tf(G)
-
-# Dominio personalizzato(rad/s)
-# es. np.logspace(-2, 3, 1000) va da 10^-2 a 10^3
-omega = np.logspace(-2, 4, 1000)
 
 # Asintotico
 show_asymptotic(G, omega)

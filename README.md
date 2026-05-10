@@ -11,4 +11,4 @@ Alcuni esercizi risolvibili sono:
 
 Versione di Python: 3.12.3
 
-Creare un ambiente virtuale e scaricare i requisiti forniti in [requirements](requirements.txt), che sono semplicemente numpy, matplotlib e python-control
+Creare un ambiente virtuale e scaricare i requisiti forniti in [requirements](requirements.txt), che sono semplicemente numpy, matplotlib,python-control e sympy
