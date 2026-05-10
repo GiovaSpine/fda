@@ -377,42 +377,29 @@ def show_asymptotic(G, omega):
     plt.tight_layout()
     plt.show()
 
+
 def show_real(G, omega):
 
     fig, ax = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
 
-    # -------------------------
-    # dati reali dal sistema
-    # -------------------------
+    # Reale
     mag, phase, _ = ctrl.frequency_response(G, omega)
 
     real_module = 20 * np.log10(np.abs(mag))
-    real_phase = np.degrees(np.unwrap(phase))
 
-    # -------------------------
-    # approssimato (per allineamento)
-    # -------------------------
+    # Approssimato per allineamento
     approx_phase = approximated_phase(G, omega)
 
-    # -------------------------
-    # ALIGN FASE (multipli di 360°)
-    # -------------------------
-    offset = np.mean(real_phase - approx_phase)
-    offset = 360 * np.round(offset / 360)
-
-    real_phase = real_phase - offset
-
-    # -------------------------
+    # Allinemento fase
+    real_phase = align_real_phase(phase, approx_phase, omega)
+        
     # MODULO
-    # -------------------------
     ax[0].semilogx(omega, real_module)
     ax[0].set_ylabel("Modulo [dB]")
     ax[0].grid(True, which="both")
     ax[0].set_title("Bode reale (allineato)")
 
-    # -------------------------
     # FASE
-    # -------------------------
     ax[1].semilogx(omega, real_phase)
     ax[1].set_xlabel("ω [rad/s]")
     ax[1].set_ylabel("Fase [deg]")
@@ -421,27 +408,23 @@ def show_real(G, omega):
     plt.tight_layout()
     plt.show()
 
+
 def show_both(G, omega):
 
     fig, ax = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
 
-    # reale
+    # Reale
     mag, phase, _ = ctrl.frequency_response(G, omega)
     real_module = 20 * np.log10(np.abs(mag))
-    real_phase = np.degrees(np.unwrap(phase))
 
-    # approssimato
+    # Approssimato
     approx_module, _, _ = approximated_module(G, omega)
     approx_phase = approximated_phase(G, omega)
 
-    # ALIGN FASE
-    offset = np.mean(real_phase - approx_phase)
-    offset = 360 * np.round(offset / 360)
-    real_phase = real_phase - offset
+    # Allinemento fase
+    real_phase = align_real_phase(phase, approx_phase, omega)
 
-    # -----------------------
     # MODULO
-    # -----------------------
     ax[0].semilogx(
         omega,
         real_module,
@@ -461,9 +444,7 @@ def show_both(G, omega):
     ax[0].grid(True, which="both")
     ax[0].legend()
 
-    # -----------------------
     # FASE
-    # -----------------------
     ax[1].semilogx(
         omega,
         real_phase,
@@ -486,6 +467,46 @@ def show_both(G, omega):
 
     plt.show()
 
+
+def align_real_phase(phase, approx_phase, omega):
+    """
+    Allinea la fase reale a quella approsimata
+    """
+    real_phase = np.degrees(phase)
+
+    if np.any(np.isnan(real_phase)):
+        # Ci sono dei problemi dovuti a poli complessi con smorzamento basso
+        # per cui si hannno delle discontinuità
+
+        break_ws = [0.0]
+        for w, p in zip(omega, real_phase):
+            if np.isnan(p):
+                break_ws.append(w)
+        offset = [0] * len(break_ws)
+        break_ws.append(np.inf)
+
+        for i in range(len(break_ws) - 1):
+            for w in omega:
+                if break_ws[i] < w < break_ws[i+1]:
+                    offset[i] += real_phase[i]
+
+            offset[i] /= len(offset)
+            offset[i] = 360 * np.round(offset[i] / 360)
+        
+        for i in range(len(break_ws) - 1):
+            for j in range(len(omega)):
+                if break_ws[i] < omega[j] < break_ws[i+1]:
+                    real_phase[j] = real_phase[j] + offset[i]
+
+    else:
+        real_phase = np.degrees(np.unwrap(phase))
+
+        offset = np.mean(real_phase - approx_phase)
+        offset = 360 * np.round(offset / 360)
+        real_phase = real_phase - offset
+
+    return real_phase
+
 # ===================================================================
 
 # P(s) = N(s) / D(s)
@@ -507,6 +528,9 @@ den = [1/400, 1/400 + 1/20, 1/20 + 1, 1]
 
 num = [3.6]
 den = [1, 4, 9, 0]
+
+num = [1]
+den = [1, 1, 1, 1]
 
 G = ctrl.TransferFunction(num, den)
 

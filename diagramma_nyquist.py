@@ -5,7 +5,71 @@ import matplotlib.pyplot as plt
 from utily import *
 
 
-def quadranti(min_phase, max_phase):
+def percorso_nyquist(G):
+    p = ctrl.poles(G)
+
+    tol = 1e-8
+
+    origin_poles = np.sum(np.isclose(p, 0))
+    imag_poles = np.sort([x.imag for x in p if np.isclose(x.real, 0) and abs(x.imag) >= tol])
+    n_imag = len(imag_poles)
+
+    # Il percorso di Nyquist cambia se si hanno poli nell'origine o immaginari puri
+
+    print("Percorso di Nyquist")
+    if origin_poles > 0 and n_imag == 0:
+        print("w segue il percorso: 0+ => +oo => -oo => 0-")
+
+    elif origin_poles == 0 and n_imag!= 0:
+        print("w segue il percorso: 0 => ", end='')
+        for i in range(int(n_imag / 2), n_imag):
+            print(f"{imag_poles[i]:.2f}- =>  {imag_poles[i]:.2f}+ => ", end='')
+        print("+oo => -oo => ", end='')
+        for i in range(0, int(n_imag / 2)):
+            print(f"{imag_poles[i]:.2f}- =>  {imag_poles[i]:.2f}+ => ", end='')
+        print("0")
+                
+    elif origin_poles > 0 and len(imag_poles) == 0:
+        print("w segue il percorso: 0+ => ", end='')
+        for i in range(int(n_imag / 2), n_imag):
+            print(f"{imag_poles[i]:.2f}- =>  {imag_poles[i]:.2f}+ => ", end='')
+        print("+oo => -oo => ", end='')
+        for i in range(0, int(n_imag / 2)):
+            print(f"{imag_poles[i]:.2f}- =>  {imag_poles[i]:.2f}+ => ", end='')
+        print("-0")
+    else:
+        print("w segue il percorso: 0 => +oo => -oo => 0")
+    print()
+
+
+def get_phase_range(G, omega):
+    """
+    Ricava il range delle fase che attraversa la risposta in frequenza, stando
+    attenta alle discontinuità
+    """
+
+    # Calcola la risposta in frequenza
+    _, phase, _ = ctrl.frequency_response(G, omega)
+    real_phase = np.degrees(phase)
+
+    phases = []
+    aux = []
+
+    # Soglia tra due valori di fase che se superata indica discontinuità
+    THRESHOLD = 5.0
+
+    for i in range(len(real_phase) - 1):
+        if np.isnan(real_phase[i]) or abs(real_phase[i] - real_phase[i+1]) > THRESHOLD:
+            phases.append(aux)
+            aux = []
+        else:
+            aux.append(real_phase[i])
+    phases.append(aux)
+    
+    return [(min(p), max(p)) for p in phases]
+
+
+def quadranti(phase_range):
     """
     Stampa in quali quadranti si trova il diagramma di Nyquist in base alla fase.
     Si ricorda che:
@@ -20,36 +84,58 @@ def quadranti(min_phase, max_phase):
         a = phase % 360 
         return a
     
-    min_phase = normalizza_fase(min_phase)
-    max_phase = normalizza_fase(max_phase)
+    quadranti = set()
+    
+    for min_phase, max_phase in phase_range:
+        
+        min_phase = normalizza_fase(min_phase)
+        max_phase = normalizza_fase(max_phase)
 
-    quadrante = ""
+        if max_phase <= 90:
+            # "primo"
+            quadranti.add("primo")
+        elif max_phase <= 180.0:
+            if min_phase >= 90.0:
+                # "secondo"
+                quadranti.add("secondo")
+            else:
+                # "primo e secondo"
+                quadranti.add("primo")
+                quadranti.add("secondo")
+        elif max_phase <= 270.0:
+            if min_phase >= 180.0:
+                # "terzo"
+                quadranti.add("terzo")
+            elif min_phase >= 90.0:
+                # "secondo e terzo"
+                quadranti.add("secondo")
+                quadranti.add("terzo")
+            else:
+                # "primo, secondo e terzo"
+                quadranti.add("primo")
+                quadranti.add("secondo")
+                quadranti.add("terzo")
+        else:
+            if min_phase >= 270.0:
+                # "quarto"
+                quadranti.add("quarto")
+            elif min_phase >= 180.0:
+                # "terzo e quarto"
+                quadranti.add("terzo")
+                quadranti.add("quarto")
+            elif min_phase >= 90.0:
+                # "secondo, terzo e quarto"
+                quadranti.add("secondo")
+                quadranti.add("terzo")
+                quadranti.add("quarto")
+            else:
+                # "primo, secondo, terzo e quarto"
+                quadranti.add("primo")
+                quadranti.add("secondo")
+                quadranti.add("terzo")
+                quadranti.add("quarto")
 
-    if max_phase <= 90:
-        quadrante = "primo"
-    elif max_phase <= 180.0:
-        if min_phase >= 90.0:
-            quadrante = "secondo"
-        else:
-            quadrante = "primo e secondo"
-    elif max_phase <= 270.0:
-        if min_phase >= 180.0:
-            quadrante = "terzo"
-        elif min_phase >= 90.0:
-            quadrante = "secondo e terzo"
-        else:
-            quadrante = "primo, secondo e terzo"
-    else:
-        if min_phase >= 270.0:
-            quadrante = "quarto"
-        elif min_phase >= 180.0:
-            quadrante = "terzo e quarto"
-        elif min_phase >= 90.0:
-            quadrante = "secondo, terzo e quarto"
-        else:
-            quadrante = "primo, secondo, terzo e quarto"
-
-    print(f"Per w che va da 0 all'infinito siamo nei quadranti: {quadrante}")
+    print(f"Per w che va da 0 all'infinito siamo nei quadranti: {quadranti}")
     print("Si ricorda che:\n\n"
         "secondo | primo\n"
         "--------|--------\n"
@@ -221,11 +307,15 @@ def analisi_limiti(G_jw, num, den):
 
 # es. 2s^2 + 3 diventa [2, 0, 3]
 
-#num = [3.6]
-#den = [1, 4, 9, 0]
+num = [3.6]
+den = [1, 4, 9, 0]
 
 num = [1]
 den = [1, 1, 0, 0]
+
+num = [1]
+den = [1, 1, 1, 1]
+
 
 G = ctrl.TransferFunction(num, den)
 
@@ -233,10 +323,9 @@ G = ctrl.TransferFunction(num, den)
 # Range di frequenze
 # es. np.logspace(-2, 3, 1000) va da 10^-2 a 10^3
 # può essere necessario ingrandirlo, perché serve per trovare il range della fase
-# (si suggerisce di fare i diagrammi di Bode e guardare da quelli il range di frequenze, se necessario)
+# (si suggerisce di fare i diagrammi di Bode e guardare il range di frequenze, se necessario)
 LEN = 5000
-omega = np.logspace(-10, 10, LEN)
-
+omega = np.logspace(-5, 5, LEN)
 
 # ---------------------------------
 
@@ -248,23 +337,33 @@ analyze_tf(G)
 G_jw = calcola_G_jw(num, den)
 
 
-# ----- RANGE DI FASE -----
-# Calcola la risposta in frequenza
-response = ctrl.frequency_response(G, omega)
+# ----- PERCORSO DI NYQUIST -----
+percorso_nyquist(G)
 
-# Estrai modulo e fase
-H = response.frdata[0, 0, :]                # array complesso
-phase = np.degrees(np.unwrap(np.angle(H)))  # fase
+
+# ----- RANGE DI FASE -----
+phase_range = get_phase_range(G, omega)
+
+print("La fase va da:")
+for min_p, max_p in phase_range:
+    print(f"   {round(min_p)} a {round(max_p)}") 
+print()
 
 # In base alla fase in che quadranti siamo ?
-print (f"La fase va da {round(min(phase))} a {round(max(phase))}")
-quadranti(round(min(phase)), round(max(phase)))
+# (per w che va da 0 a infinito)
+quadranti(phase_range)
+
+
+# ----- INTERSEZIONE ASSI -----
+# (per w che va da 0 a infinito)
+
 
 
 # ----- COMPORTAMENTO ASINTOTICO -----
 # Calcola comportamento per w piccolo e per w grande
 analisi_limiti(G_jw, num, den)
 
+exit(1)
 
 # Aspettare che utente prema invio prima di mostrare i risultati
 scelta = input("Premi INVIO per vedere i grafici o 'q' per uscire: ")
