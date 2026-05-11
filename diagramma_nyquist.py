@@ -45,12 +45,17 @@ def percorso_nyquist(G):
 def get_phase_range(G, omega):
     """
     Ricava il range delle fase che attraversa la risposta in frequenza, stando
-    attenta alle discontinuità
+    attenta alle discontinuità.
+
+    Es. per G(s) = 1 / ((s + 1)*(s + 1) ^ 2)
+    si ha poli immaginari puri, per cui lo smorzamento è 0 e si ha
+    discontinuità nella fase.
     """
 
     # Calcola la risposta in frequenza
     _, phase, _ = ctrl.frequency_response(G, omega)
-    real_phase = np.degrees(phase)
+    real_phase = np.degrees(np.unwrap(phase))
+    #real_phase = np.degrees(phase)
 
     phases = []
     aux = []
@@ -60,6 +65,7 @@ def get_phase_range(G, omega):
 
     for i in range(len(real_phase) - 1):
         if np.isnan(real_phase[i]) or abs(real_phase[i] - real_phase[i+1]) > THRESHOLD:
+            print("Discontinuità:", real_phase[i], real_phase[i+1])
             phases.append(aux)
             aux = []
         else:
@@ -135,7 +141,7 @@ def quadranti(phase_range):
                 quadranti.add("terzo")
                 quadranti.add("quarto")
 
-    print(f"Per w che va da 0 all'infinito siamo nei quadranti: {quadranti}")
+    print(f"Per w che va da 0 all'infinito, siamo nei quadranti: {quadranti}")
     print("Si ricorda che:\n\n"
         "secondo | primo\n"
         "--------|--------\n"
@@ -316,6 +322,9 @@ den = [1, 1, 0, 0]
 num = [1]
 den = [1, 1, 1, 1]
 
+num = [1]
+den = [1, 3, 2, 0]
+
 
 G = ctrl.TransferFunction(num, den)
 
@@ -344,7 +353,7 @@ percorso_nyquist(G)
 # ----- RANGE DI FASE -----
 phase_range = get_phase_range(G, omega)
 
-print("La fase va da:")
+print("La fase, per w che va da 0 all'infinito, va da:")
 for min_p, max_p in phase_range:
     print(f"   {round(min_p)} a {round(max_p)}") 
 print()
@@ -354,16 +363,10 @@ print()
 quadranti(phase_range)
 
 
-# ----- INTERSEZIONE ASSI -----
-# (per w che va da 0 a infinito)
-
-
-
 # ----- COMPORTAMENTO ASINTOTICO -----
 # Calcola comportamento per w piccolo e per w grande
 analisi_limiti(G_jw, num, den)
 
-exit(1)
 
 # Aspettare che utente prema invio prima di mostrare i risultati
 scelta = input("Premi INVIO per vedere i grafici o 'q' per uscire: ")
