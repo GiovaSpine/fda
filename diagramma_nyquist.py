@@ -297,6 +297,7 @@ def analisi_limiti(G_jw, num, den):
             w_sol = sp.solve(sp.Eq(y, im_dom), w)[0]
             curva = sp.simplify(re_dom.subs(w, w_sol))
             print(f"L'asintoto è x = f(y) = {curva}")
+            print("(L'asse immaginario è y e l'asse reale è x)")
         else:
             # Impossibile, almeno uno deve tendere all'infinito se G(j0) tende all'infinito
             raise ValueError("ERRORE durante il calcolo dell'asintoto")
@@ -308,10 +309,19 @@ def analisi_limiti(G_jw, num, den):
 
 # ===================================================================
 
-# P(s) = N(s) / D(s)
-# Dove N(s) e D(s) sono polinomi qualsiasi (non per forza monico)
+# ATTENZIONE
+# Non ci si può proprio fidare di ctrl.nyquist_plot(G)
+# es.
+#   num = [1/100, 1/5, 1]
+#   den = [1, 1, 0, 0]
+# il diagramma non è accurato, poiché manca una regione vicino a 0
+# SI SUGGERISCE DI VERIFICARE CON BODE E NON FIDARSI CIECAMENTE
 
+
+# G(s) = N(s) / D(s)
+# Dove N(s) e D(s) sono polinomi qualsiasi (non per forza monico)
 # es. 2s^2 + 3 diventa [2, 0, 3]
+
 
 num = [3.6]
 den = [1, 4, 9, 0]
@@ -324,6 +334,9 @@ den = [1, 1, 1, 1]
 
 num = [1]
 den = [1, 3, 2, 0]
+
+num = [1/100, 1/5, 1]
+den = [1, 1, 0, 0]
 
 
 G = ctrl.TransferFunction(num, den)

@@ -1,9 +1,6 @@
 .venv
 __pycache__
 comandi.txt
-aux.py
-practice.py
 test.py
 nyquist.py
-test2.py
-test3.py
+varie/
