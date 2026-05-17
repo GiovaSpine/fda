@@ -3,6 +3,9 @@ import sympy as sp
 
 def state_to_transfer(A, B, C, D):
 
+    # simbolo
+    s = sp.symbols('s')
+
     # dimensione
     n = len(A)
 
@@ -63,33 +66,32 @@ def state_to_transfer(A, B, C, D):
 
 # ---------------------------------------------------------
 
-# Dato un sistema in forma di stato, è possibile convertirlo nella forma
-# a funzione di trasferimento con la seguente formula:
-#   G(s) = C (sI - A)^(-1) B + D
-# Il codice fa solo questo calcolo
+if __name__ == "__main__":
+   
+    # Dato un sistema in forma di stato, è possibile convertirlo nella forma
+    # a funzione di trasferimento con la seguente formula:
+    #   G(s) = C (sI - A)^(-1) B + D
+    # Il codice fa solo questo calcolo
 
-# simbolo
-s = sp.symbols('s')
+    A = [
+        [0, 1, 0],
+        [0, 0, 1],
+        [-1, -2, -3]
+    ]
 
-A = [
-    [0, 1, 0],
-    [0, 0, 1],
-    [-1, -2, -3]
-]
+    B = [
+        [10],
+        [0],
+        [0]
+    ]
 
-B = [
-    [10],
-    [0],
-    [0]
-]
+    C = [
+        [1, 0, 0]
+    ]
 
-C = [
-    [1, 0, 0]
-]
-
-D = [
-    [0]
-]
+    D = [
+        [0]
+    ]
 
 
-state_to_transfer(A, B, C, D)
+    state_to_transfer(A, B, C, D)

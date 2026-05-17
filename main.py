@@ -1,5 +1,4 @@
 from proprieta_sistema import *
-import numpy as np
 
 
 A = [
@@ -25,3 +24,4 @@ raggiungibilita(A, B)
 osservabilita(A, C)
 raggiungibilita_PBH(A, B)
 osservabilita_PBH(A, C)
+stabilita_BIBO(A, B, C)

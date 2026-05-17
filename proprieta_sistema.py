@@ -75,7 +75,7 @@ def __trova_q(A, eigenvalue, m, tol=1e-9):
 
 def stabilita(A):
     '''
-    Calcola se i modi del sistema e la conseguente stabilità.
+    Calcola i modi del sistema e la conseguente stabilità (interna).
 
     Parametri:
         A: Matrice di numeri reali che rapprenseta il sistema
@@ -245,7 +245,7 @@ def osservabilita(A, C):
     print()
 
 
-def raggiungibilita_PBH(A, B):
+def raggiungibilita_PBH(A, B, stampa=True):
     '''
     Calcola se il sistema è raggiungibile usando il lemma PBH:
     per ogni lambda:
@@ -254,6 +254,7 @@ def raggiungibilita_PBH(A, B):
     Parametri:
         A: Matrice A n x n, di x' = Ax + Bu
         B: Matrice B n x r, di x' = Ax + Bu
+        stampa: Booleano per stampare i risultati o no
     '''
     __check_matrix(A, square=True)
     __check_matrix(B)
@@ -262,6 +263,9 @@ def raggiungibilita_PBH(A, B):
     if A.shape[0] != B.shape[0]:
         raise ValueError("'B' deve avere 'n' righe")
 
+    # Dizionario nella forma (autovalore, {True, False})
+    # che indica quali autovalori sono raggiungibili o no
+    raggiungibili = {}
 
     n = A.shape[0]
 
@@ -271,20 +275,28 @@ def raggiungibilita_PBH(A, B):
         # Ricaviamo la matrice [av*I - A | B]
         aux = (np.eye(n) * av) - A
         aux = np.append(aux, B, axis=1)
-        print(f"per lambda = {av}")
-        print("[lambda*I - A | B] =")
-        print(np.array(aux))
+        if stampa:
+            print(f"per lambda = {av}")
+            print("[lambda*I - A | B] =")
+            print(np.array(aux))
         rango = np.linalg.matrix_rank(aux)
         if rango < n:
-            print(f"rango = {rango} < (n = {n})  B non riesce a far recuperare il rango massimo")
-            print(f"--> Lo stato del modo associato a {av} è irraggiungibile")
+            raggiungibili[av] = False
+            if stampa:
+                print(f"rango = {rango} < (n = {n})  B non riesce a far recuperare il rango massimo")
+                print(f"--> Lo stato del modo associato a {av} è irraggiungibile")
         else:
-            print(f"--> rango = {rango} == (n = {n})  B riesce a far recuperare il rango massimo")
-            print(f"--> Lo stato del modo associato a {av} è raggiungibile")
-        print()
+            raggiungibili[av] = True
+            if stampa:
+                print(f"--> rango = {rango} == (n = {n})  B riesce a far recuperare il rango massimo")
+                print(f"--> Lo stato del modo associato a {av} è raggiungibile")
+        if stampa:
+            print()
+
+    return raggiungibili
 
 
-def osservabilita_PBH(A, C):
+def osservabilita_PBH(A, C, stampa=True):
     '''
     Calcola se il sistema è osservabile usando il lemma PBH:
     per ogni lambda:
@@ -294,6 +306,7 @@ def osservabilita_PBH(A, C):
     Parametri:
         A: Matrice A n x n, di x' = Ax + Bu
         C: Matrice C m x n, di y = Cx + Du
+        stampa: Booleano per stampare i risultati o no
     '''
     __check_matrix(A, square=True)
     __check_matrix(C)
@@ -301,6 +314,10 @@ def osservabilita_PBH(A, C):
     C = np.array(C)
     if A.shape[1] != C.shape[1]:
         raise ValueError("'C' deve avere 'n' colonne")
+    
+    # Dizionario nella forma (autovalore, {True, False})
+    # che indica quali autovalori sono osservabili o no
+    osservabili = {}
 
     n = A.shape[0]
 
@@ -311,18 +328,62 @@ def osservabilita_PBH(A, C):
         #                      [   C    ]
         aux = (np.eye(n) * av) - A
         aux = np.vstack([aux, C])
-        print(f"per lambda = {av}")
-        print("[lambda*I - A] =")
-        print("[     C      ]")
-        print(np.array(aux))
+        if stampa:
+            print(f"per lambda = {av}")
+            print("[lambda*I - A] =")
+            print("[     C      ]")
+            print(np.array(aux))
         rango = np.linalg.matrix_rank(aux)
         if rango < n:
-            print(f"rango = {rango} < (n = {n})  C non riesce a far recuperare il rango massimo")
-            print(f"--> Lo stato del modo associato a {av} non è osservabile")
+            osservabili[av] = False
+            if stampa:
+                print(f"rango = {rango} < (n = {n})  C non riesce a far recuperare il rango massimo")
+                print(f"--> Lo stato del modo associato a {av} non è osservabile")
         else:
-            print(f"--> rango = {rango} == (n = {n})  C riesce a far recuperare il rango massimo")
-            print(f"--> Lo stato del modo associato a {av} è osservabile")
-        print()
+            osservabili[av] = True
+            if stampa:
+                print(f"--> rango = {rango} == (n = {n})  C riesce a far recuperare il rango massimo")
+                print(f"--> Lo stato del modo associato a {av} è osservabile")
+        if stampa:
+            print()
     
+    return osservabili
 
+
+def stabilita_BIBO(A, B, C):
+    '''
+    Calcola la BIBO stabilità (stabilità esterna), mediante lo studio dei poli,
+    che sono gli autovalori di A raggiungibili e osservabili.
+
+    Parametri:
+        A: Matrice A n x n
+        B: Matrice B n x r, di x' = Ax + Bu
+        C: Matrice C m x n, di y = Cx + Du
+    '''
+    __check_matrix(A, square=True)
+    __check_matrix(B)
+    __check_matrix(C)
+    A = np.array(A)
+    B = np.array(B)
+    C = np.array(C)
+    if A.shape[0] != B.shape[0]:
+        raise ValueError("'B' deve avere 'n' righe")
+    if A.shape[1] != C.shape[1]:
+        raise ValueError("'C' deve avere 'n' colonne")
+    
+    raggiungibili = raggiungibilita_PBH(A, B, False)
+    osservabili = osservabilita_PBH(A, C, False)
+
+    print("I poli del sistema sono gli autovalori raggiungibili e osservabili, ossia:")
+
+    stabilita = "stabile"
+    for (av, ragg), (_, oss) in zip(raggiungibili.items(), osservabili.items()):
+        if ragg and oss:
+            if np.real(av) > 0.0:
+                stabilita = "instabile"
+                print(f"- lambda = {av}  con parte reale > 0 (polo instabile)")
+            else:
+                print(f"- lambda = {av}")
+    print(f"\nIl sistema è BIBO {stabilita}")
+    print()
 
